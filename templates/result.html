@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>面接結果</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+
+</head>
+
+<body>
+
+    <div class="result-container">
+
+        <h1>面接結果</h1>
+
+        <h2 id="score"></h2>
+
+        <div class="result-box">
+
+            <h3>🌟 良かった点</h3>
+            <p id="good"></p>
+
+        </div>
+
+        <div class="result-box">
+
+            <h3>📝 改善点</h3>
+            <p id="improve"></p>
+
+        </div>
+
+        <div class="result-box">
+
+            <h3>❓ AIからの深掘り質問</h3>
+            <p id="follow"></p>
+
+        </div>
+
+        <br>
+
+        <button onclick="location.href='/'">
+            トップへ戻る
+        </button>
+
+    </div>
+
+    <script>
+
+        const resultText = localStorage.getItem("result");
+
+        if (!resultText) {
+
+            alert("結果データがありません。");
+
+            location.href = "/";
+
+        }
+
+        const data = JSON.parse(resultText);
+
+        document.getElementById("score").innerText =
+            "総合点：" + data.score + " 点";
+
+        document.getElementById("good").innerText =
+            data.good;
+
+        document.getElementById("improve").innerText =
+            data.improve;
+
+        document.getElementById("follow").innerText =
+            data.follow;
+
+    </script>
+
+</body>
+
+</html>

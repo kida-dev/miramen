@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>ミラメン</title>
+<link rel="stylesheet"
+href="/static/style.css">
+</head>
+
+<body>
+
+<h1>ミラメン</h1>
+
+<h2>AI面接練習システム</h2>
+<img
+src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+width="180">
+
+<select id="type">
+
+<option>優しい</option>
+
+<option>普通</option>
+
+<option>厳しい</option>
+
+</select>
+
+<button onclick="start()">
+面接開始
+</button>
+
+<script>
+
+function start(){
+
+const type =
+document.getElementById("type").value;
+
+localStorage.setItem("type", type);
+
+location.href="/interview";
+
+}
+
+</script>
+
+</body>
+
+</html>

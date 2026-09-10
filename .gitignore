@@ -1,0 +1,14 @@
+# Gemini APIキーをGitHubに上げない
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 仮想環境
+venv/
+.venv/
+
+# VSCode
+.vscode/
