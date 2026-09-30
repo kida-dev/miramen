@@ -49,6 +49,10 @@
         <!-- 右側：チャットと入力 -->
         <div class="right-area">
 
+            <div style="padding:12px;background:#eaf1ff;color:#243047;border-radius:8px;margin-bottom:10px">
+                <span id="progress">質問を準備しています。</span>
+                <a href="/" style="margin-left:12px">開始画面へ</a>
+            </div>
             <!-- チャットエリア -->
             <div
                 id="chat"
@@ -106,6 +110,26 @@
     <script>
         let questionText = "";
         let questionHistory = [];
+        const mode = localStorage.getItem("questionMode") === "fixed" ? "fixed" : "random";
+        const setId = localStorage.getItem("questionSetId") || "basic";
+        let position = 0;
+        let totalQuestions = 0;
+        let sessionFinished = false;
+        let hasAnswered = false;
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function finishSession() {
+            sessionFinished = true;
+            timerRunning = false;
+            questionText = "";
+            document.getElementById('answer').disabled = true;
+            document.querySelector('.send-button').disabled = true;
+            document.getElementById('progress').textContent = `固定テンプレート：全${totalQuestions}問の練習が終了しました。`;
+            document.getElementById('status').innerHTML = '<button type="button" onclick="location.reload()">同じセットを最初から練習</button> <a href="/">別のセットを選ぶ</a>';
+        }
 
         let startTime = null;
         let timerRunning = false;
@@ -305,7 +329,7 @@
                         class="next-question-button"
                         onclick="nextQuestion()"
                     >
-                        ➡ 次の質問
+                        ${mode === "fixed" && position + 1 >= totalQuestions ? "練習を終了" : "➡ 次の質問"}
                     </button>
 
                 </div>
@@ -314,6 +338,8 @@
 
 
         function retryAnswer() {
+            if (sessionFinished || isLoadingQuestion) return;
+            hasAnswered = false;
             const answerArea =
                 document.getElementById("answer");
 
@@ -342,6 +368,12 @@
 
 
         function nextQuestion() {
+            if (isLoadingQuestion || !hasAnswered || sessionFinished) return;
+            hasAnswered = false;
+            if (mode === "fixed") {
+                position += 1;
+                if (position >= totalQuestions) { finishSession(); return; }
+            }
             isSubmitting = false;
 
             document
@@ -357,11 +389,15 @@
         // =====================
 
         async function loadQuestion() {
-            if (isLoadingQuestion) {
+            if (isLoadingQuestion || sessionFinished) {
                 return;
             }
 
             isLoadingQuestion = true;
+            questionText = "";
+            hasAnswered = false;
+            if (recognition) recognition.stop();
+            document.querySelector('.send-button').disabled = true;
             timerRunning = false;
 
             const status =
@@ -403,7 +439,10 @@
                                     body: JSON.stringify({
                                         type: type,
                                         personality: personality,
-                                        history: questionHistory
+                                        history: questionHistory,
+                                        mode: mode,
+                                        set_id: setId,
+                                        position: position
                                     })
                                 },
                                 QUESTION_TIMEOUT_MS
@@ -424,6 +463,17 @@
                         const data =
                             await response.json();
 
+                        if (data.finished) {
+                            totalQuestions = data.total;
+                            finishSession();
+                            return;
+                        }
+                        if (mode === 'fixed') {
+                            totalQuestions = data.total;
+                            document.getElementById('progress').textContent = `${data.set_name}：${position + 1}／${totalQuestions}問`;
+                        } else {
+                            document.getElementById('progress').textContent = 'AIランダム質問';
+                        }
                         if (!data.question) {
                             throw new Error(
                                 "質問内容が空です。"
@@ -435,7 +485,7 @@
 
                         // 完全一致の重複はクライアント側でも拒否
                         if (
-                            questionHistory.includes(
+                            mode === "random" && questionHistory.includes(
                                 newQuestion
                             )
                         ) {
@@ -463,7 +513,7 @@
 
                         addMessage(
                             "assistant",
-                            newQuestion
+                            escapeHtml(newQuestion)
                         );
 
                         startTime =
@@ -520,6 +570,7 @@
 
             } finally {
                 isLoadingQuestion = false;
+                document.querySelector('.send-button').disabled = sessionFinished || !questionText;
             }
         }
 
@@ -554,6 +605,7 @@
         // =====================
 
         function startSpeech() {
+            if (sessionFinished || isLoadingQuestion || isSubmitting || hasAnswered) return;
             const SpeechRecognition =
                 window.SpeechRecognition ||
                 window.webkitSpeechRecognition;
@@ -665,7 +717,7 @@
         // =====================
 
         async function submitAnswer() {
-            if (isSubmitting) {
+            if (isSubmitting || isLoadingQuestion || sessionFinished || hasAnswered) {
                 return;
             }
 
@@ -701,7 +753,7 @@
 
             addMessage(
                 "user",
-                answer
+                escapeHtml(answer)
             );
 
             answerArea.value = "";
@@ -757,7 +809,7 @@
                             <strong>
                                 📝 音声認識を補正しました
                             </strong><br>
-                            ${data.corrected_answer}
+                            ${escapeHtml(data.corrected_answer)}
                         </div>
                     `;
                 }
@@ -770,19 +822,19 @@
                     </div>
 
                     <div class="score">
-                        点数：${data.score}点
+                        点数：${escapeHtml(data.score)}点
                     </div>
 
                     ${correctionHtml}
 
                     <div class="evaluation-item">
                         <strong>良かった点</strong><br>
-                        ${data.good || "特にありません。"}
+                        ${escapeHtml(data.good || "特にありません。")}
                     </div>
 
                     <div class="evaluation-item">
                         <strong>改善点</strong><br>
-                        ${data.improve || "特にありません。"}
+                        ${escapeHtml(data.improve || "特にありません。")}
                     </div>
 
                     <div class="next-message">
@@ -791,6 +843,8 @@
                     `
                 );
 
+                hasAnswered = true;
+                isSubmitting = false;
                 showNextActionButtons();
 
             } catch (error) {
@@ -803,7 +857,7 @@
                     "assistant",
                     `
                     分析中にエラーが発生しました。<br>
-                    ${getErrorMessage(error)}
+                    ${escapeHtml(getErrorMessage(error))}
                     `
                 );
 

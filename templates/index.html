@@ -1,51 +1,51 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>ミラメン</title>
-<link rel="stylesheet"
-href="/static/style.css">
-</head>
-
-<body>
-
-<h1>ミラメン</h1>
-
-<h2>AI面接練習システム</h2>
-<img
-src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
-width="180">
-
-<select id="type">
-
-<option>優しい</option>
-
-<option>普通</option>
-
-<option>厳しい</option>
-
-</select>
-
-<button onclick="start()">
-面接開始
-</button>
-
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ミラメン</title><link rel="stylesheet" href="/static/style.css">
+<style>
+.setup{max-width:640px;margin:36px auto;padding:24px;background:#fff;color:#243047;border-radius:16px;text-align:left}
+.setup h1,.setup h2{text-align:center}.setup label{display:block;margin:18px 0 6px}
+.setup select{display:block;box-sizing:border-box;width:100%;padding:10px}
+.modes{display:flex;gap:12px}.modes button{flex:1;padding:14px;border:2px solid #aab4c5;border-radius:10px;background:#fff;color:#243047;cursor:pointer}
+.modes button[aria-pressed="true"]{border-color:#2563eb;background:#eaf1ff;color:#1d4ed8}
+.setup .begin{display:block;width:100%;margin-top:24px;padding:14px;background:#2563eb;color:white;border:0;border-radius:10px;cursor:pointer}
+#preview{padding-left:24px;line-height:1.8}
+</style></head>
+<body><main class="setup"><h1>ミラメン</h1><h2>AI面接練習システム</h2>
+<p>基本の回答を準備する練習と、さまざまな質問に答える練習を選べます。</p>
+<label>練習モード</label><div class="modes">
+<button type="button" id="fixed" aria-pressed="true" onclick="chooseMode('fixed')">固定テンプレート</button>
+<button type="button" id="random" aria-pressed="false" onclick="chooseMode('random')">AIランダム</button></div>
+<div id="fixedOptions"><label for="setId">質問セット（各5問）</label><select id="setId" onchange="showPreview()">
+{% for id, item in question_sets.items() %}<option value="{{ id }}">{{ item.name }}</option>{% endfor %}
+</select><ol id="preview"></ol></div>
+<label for="interviewType">面接種類</label><select id="interviewType"><option value="進学">進学</option><option value="就職">就職</option></select>
+<div id="randomOptions" hidden><label for="personality">面接官タイプ</label><select id="personality"><option>優しい</option><option selected>普通</option><option>厳しい</option></select>
+<p>面接官タイプは、AIが生成する質問に反映します。</p></div>
+<button class="begin" type="button" onclick="start()">面接開始</button></main>
 <script>
-
-function start(){
-
-const type =
-document.getElementById("type").value;
-
-localStorage.setItem("type", type);
-
-location.href="/interview";
-
+const questionSets = {{ question_sets | tojson }};
+let mode = 'fixed';
+function chooseMode(value){
+    mode=value;
+    for(const id of ['fixed','random']) document.getElementById(id).setAttribute('aria-pressed',String(id===mode));
+    document.getElementById('fixedOptions').hidden=mode!=='fixed';
+    document.getElementById('randomOptions').hidden=mode!=='random';
 }
-
-</script>
-
-</body>
-
-</html>
+function showPreview(){
+    const id=document.getElementById('setId').value;
+    const list=document.getElementById('preview');list.replaceChildren();
+    for(const text of questionSets[id].questions){const li=document.createElement('li');li.textContent=text;list.appendChild(li);}
+    if(id==='school') document.getElementById('interviewType').value='進学';
+    if(id==='job') document.getElementById('interviewType').value='就職';
+}
+function start(){
+    localStorage.setItem('questionMode',mode);
+    localStorage.setItem('questionSetId',document.getElementById('setId').value);
+    localStorage.setItem('type',document.getElementById('interviewType').value);
+    localStorage.setItem('personality',document.getElementById('personality').value);
+    location.href='/interview';
+}
+showPreview();
+</script></body></html>

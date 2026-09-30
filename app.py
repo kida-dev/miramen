@@ -3,6 +3,7 @@ import traceback
 from flask import Flask, jsonify, render_template, request
 
 from ai import analyze_answer, generate_question
+from question_templates import QUESTION_SETS
 
 
 app = Flask(__name__)
@@ -10,7 +11,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", question_sets=QUESTION_SETS)
 
 
 @app.route("/interview")
@@ -22,6 +23,26 @@ def interview():
 def get_question():
     try:
         data = request.get_json(silent=True) or {}
+
+        if not isinstance(data, dict):
+            return jsonify({"error": "送信形式が不正です。"}), 400
+
+        mode = data.get("mode", "random")
+        if mode not in ("fixed", "random"):
+            return jsonify({"error": "練習モードが不正です。"}), 400
+
+        if mode == "fixed":
+            template = QUESTION_SETS.get(data.get("set_id")) if isinstance(data.get("set_id"), str) else None
+            position = data.get("position", 0)
+            if template is None:
+                return jsonify({"error": "質問セットが見つかりません。"}), 400
+            if type(position) is not int or position < 0:
+                return jsonify({"error": "質問番号が不正です。"}), 400
+            questions = template["questions"]
+            if position >= len(questions):
+                return jsonify({"finished": True, "total": len(questions), "set_name": template["name"]})
+            return jsonify({"question": questions[position], "finished": False,
+                            "position": position, "total": len(questions), "set_name": template["name"]})
 
         interview_type = data.get("type", "")
         personality = data.get("personality", "")
